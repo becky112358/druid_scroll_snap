@@ -2,14 +2,16 @@ use std::sync::Arc;
 
 use druid::widget::{Button, Controller, Flex, Label, List, RadioGroup, Scroll};
 use druid::{
-    theme, AppLauncher, Color, Data, Env, FontDescriptor, FontWeight, Lens, UpdateCtx, Vec2,
-    Widget, WidgetExt, WindowDesc,
+    theme, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, FontDescriptor,
+    FontWeight, Handled, Lens, Selector, Target, UpdateCtx, Vec2, Widget, WidgetExt, WindowDesc,
 };
 
 const WINDOW_SIZE: f64 = 200.0;
 const WIDGET_SPACING: f64 = 20.0;
-const BIG_NUMBER: f64 = f64::MAX;   // todo...
+const BIG_NUMBER: f64 = f64::MAX; // todo...
 const COLOR_CLEAR: Color = Color::rgb8(0xff, 0x30, 0x30);
+
+const SNAP_DONE: Selector<()> = Selector::new("snap done");
 
 const WORDS: &[&str] = &[
     "We",
@@ -61,9 +63,32 @@ impl<W: Widget<ScrollSnap>> Controller<ScrollSnap, Scroll<ScrollSnap, W>> for Sc
     ) {
         if data.snap_user_requested && data.snap_required {
             child.scroll_by(Vec2::new(0.0, BIG_NUMBER));
+            let _ = ctx
+                .get_external_handle()
+                .submit_command(SNAP_DONE, (), Target::Auto);
         }
 
         child.update(ctx, old_data, data, env);
+    }
+}
+
+struct Delegate;
+
+impl AppDelegate<ScrollSnap> for Delegate {
+    fn command(
+        &mut self,
+        _: &mut DelegateCtx,
+        _: Target,
+        cmd: &Command,
+        data: &mut ScrollSnap,
+        _: &Env,
+    ) -> Handled {
+        if cmd.get(SNAP_DONE).is_some() {
+            data.snap_required = false;
+            Handled::Yes
+        } else {
+            Handled::No
+        }
     }
 }
 
@@ -76,6 +101,7 @@ pub fn main() {
 
     AppLauncher::with_window(window)
         .configure_env(|env, _| env.set(theme::UI_FONT, FontDescriptor::default()))
+        .delegate(Delegate {})
         .launch(initial_state)
         .expect("Failed to launch application");
 }
