@@ -10,11 +10,15 @@ const LIST_EXTENDED_AT_END: Selector<()> = Selector::new("list has been extended
 
 pub struct ListSnap<T> {
     list: List<T>,
+    size: Size,
 }
 
 impl<T> ListSnap<T> {
     pub fn new(list: List<T>) -> Self {
-        Self { list }
+        Self {
+            list,
+            size: Size::ZERO,
+        }
     }
 }
 
@@ -56,23 +60,15 @@ impl<C: Data, T: ListIter<C>> Widget<T> for ListSnap<C> {
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
         self.list.update(ctx, old_data, data, env);
-        if data.data_len() > old_data.data_len() {
-//            let mut extended_only_at_end = true;
-//            old_data.for_each(|od: &C, i: usize| {
-//                data.for_each(|d: &C, j: usize| {
-//                    if i == j {
-//                        extended_only_at_end = extended_only_at_end && d.eq(od);
-//                    }
-//                })
-//            });
-//            if extended_only_at_end {
-                let _ = ctx.submit_command(LIST_EXTENDED_AT_END);
-//            }
-        }
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
-        self.list.layout(ctx, bc, data, env)
+        let new_size = self.list.layout(ctx, bc, data, env);
+        if new_size.height > self.size.height {
+            let _ = ctx.submit_command(LIST_EXTENDED_AT_END);
+        }
+        self.size = new_size;
+        new_size
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
