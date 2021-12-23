@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use druid::widget::{Button, Controller, Flex, Label, List, RadioGroup, Scroll};
 use druid::{
-    theme, AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, FontDescriptor,
-    FontWeight, Handled, Lens, Selector, Size, Target, UpdateCtx, Vec2, Widget, WidgetExt,
-    WindowDesc,
+    theme, AppLauncher, Color, Data, Env, Event, EventCtx, FontDescriptor, FontWeight, Lens,
+    Selector, Size, Target, UpdateCtx, Vec2, Widget, WidgetExt, WindowDesc,
 };
 
 const WINDOW_SIZE: f64 = 200.0;
@@ -74,42 +73,25 @@ impl<W: Widget<ScrollSnap>> Controller<ScrollSnap, W> for ScrollInternal {
 }
 
 impl<W: Widget<ScrollSnap>> Controller<ScrollSnap, Scroll<ScrollSnap, W>> for ScrollExternal {
-    fn update(
+    fn event(
         &mut self,
         child: &mut Scroll<ScrollSnap, W>,
-        ctx: &mut UpdateCtx,
-        old_data: &ScrollSnap,
-        data: &ScrollSnap,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut ScrollSnap,
         env: &Env,
     ) {
-        if data.snap_user_requested && data.list_size.height > old_data.list_size.height {
-            child.scroll_by(Vec2::new(
-                0.0,
-                data.list_size.height - old_data.list_size.height,
-            ));
+        if let Event::Command(cmd) = event {
+            if let Some(size) = cmd.get(COMMAND_SIZE) {
+                if data.snap_user_requested && size.height > data.list_size.height {
+                    child.scroll_by(Vec2::new(0.0, f64::MAX));
+                }
+                data.list_size = *size;
+                ctx.set_handled();
+            }
         }
 
-        child.update(ctx, old_data, data, env);
-    }
-}
-
-struct Delegate;
-
-impl AppDelegate<ScrollSnap> for Delegate {
-    fn command(
-        &mut self,
-        _: &mut DelegateCtx,
-        _: Target,
-        cmd: &Command,
-        data: &mut ScrollSnap,
-        _: &Env,
-    ) -> Handled {
-        if let Some(size) = cmd.get(COMMAND_SIZE) {
-            data.list_size = *size;
-            Handled::Yes
-        } else {
-            Handled::No
-        }
+        child.event(ctx, event, data, env);
     }
 }
 
@@ -122,7 +104,6 @@ pub fn main() {
 
     AppLauncher::with_window(window)
         .configure_env(|env, _| env.set(theme::UI_FONT, FontDescriptor::default()))
-        .delegate(Delegate {})
         .launch(initial_state)
         .expect("Failed to launch application");
 }
