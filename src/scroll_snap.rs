@@ -44,6 +44,8 @@ impl<T: Data, W: Widget<T>> Widget<T> for ScrollSnap<T, W> {
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
         self.scroll.update(ctx, old_data, data, env);
 
+        ctx.request_layout();
+
         if (self.snap_horizontal)(data, env) && self.snap {
             self.scroll.scroll_by(Vec2::new(f64::MAX, 0.0));
         }
